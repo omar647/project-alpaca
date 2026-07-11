@@ -1,0 +1,45 @@
+# ==========================================================================
+# project-alpaca — system configuration (NO SECRETS HERE; keys live in .env)
+# ==========================================================================
+
+# Universe of tickers the data pipeline tracks and the strategy trades (5–20).
+universe:
+  - AAPL
+  - MSFT
+  - SPY
+  - QQQ
+  - NVDA
+  - AMD
+  - GOOGL
+  - META
+
+# Which systematic strategy to run. Options: "ma_crossover" | "ml"
+strategy:
+  name: ma_crossover
+  params:
+    # ma_crossover: go long when fast SMA > slow SMA (trend following)
+    fast: 20
+    slow: 50
+    # ml (used only when name == "ml"): long when P(up) > threshold
+    model: gradient_boosting
+    threshold: 0.60
+
+# Risk limits — enforced before every order.
+risk:
+  max_position_pct: 0.15      # ≤15% of equity in any one name
+  max_gross_exposure: 1.00    # ≤100% of equity invested (no leverage)
+  max_position_usd: 20000     # hard $ cap per name
+  stop_loss_pct: 0.08         # exit a position down 8% from entry
+  take_profit_pct: 0.20       # exit a position up 20% from entry
+
+# Engine / execution behaviour.
+engine:
+  starting_equity: 100000     # used for backtest + sizing reference
+  poll_seconds: 60            # how often the live loop re-evaluates signals
+  order_type: market          # market | limit
+  bars_lookback_days: 400     # history pulled per symbol to compute signals
+
+# Backtest defaults.
+backtest:
+  years: 3
+  timeframe: day
