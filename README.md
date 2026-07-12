@@ -216,7 +216,12 @@ Connected to PAPER account PA3GL5RGH9D9 (equity $100,175.07). Strategy: ma_cross
 Each buy is risk-sized and routed to Alpaca paper; the order appears in the Alpaca
 dashboard and in the app's **Recent orders** + **Event log**.
 
-*(Add `screenshots/dashboard_paper.png` and `screenshots/alpaca_dashboard.png`.)*
+**The dashboard** (`streamlit run ui/app.py`):
+
+![Paper trading dashboard](screenshots/dashboard_paper.png)
+![Backtest view](screenshots/dashboard_backtest.png)
+
+*(Add `screenshots/alpaca_dashboard.png` — your Alpaca paper account with an executed order.)*
 
 ---
 
