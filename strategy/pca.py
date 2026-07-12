@@ -1,7 +1,7 @@
 """Standardize features and reduce them with PCA.
 
-We keep the smallest number of principal components that together explain at
-least ``VARIANCE_TARGET`` (80%) of the variance, then use those components as
+Keeps the smallest number of principal components that together explain at
+least ``VARIANCE_TARGET`` (80%) of the variance, then uses those components as
 the ML model's inputs.
 """
 

@@ -5,14 +5,14 @@ A *signal* is a target position in {0, 1} per symbol: 1 = hold a long position,
 
   * :class:`MACrossover` — **trend following**. Go long when a fast SMA is above
     a slow SMA; exit to cash when it crosses back below. Intuition: momentum
-    persists — an uptrend (fast > slow) tends to continue, so we ride it and
-    step aside in downtrends to dodge the worst drawdowns.
+    persists — an uptrend (fast > slow) tends to continue, so the strategy rides
+    it and steps aside in downtrends to dodge the worst drawdowns.
 
   * :class:`MLStrategy` — **model based**. Engineer technical features, compress
     them with PCA, and train a classifier to predict "next-day return > 0". Go
     long when the model's probability of an up day exceeds a threshold (0.60).
     Intuition: many weak technical signals, combined by a model, can tilt the
-    odds of the next day slightly in our favour.
+    odds of the next day slightly in its favour.
 
 Each strategy exposes:
   * ``signal_series(bars)`` — a full 0/1 series over history (for the backtest).

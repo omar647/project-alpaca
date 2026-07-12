@@ -42,13 +42,13 @@ class RiskManager:
 
         ``gross_exposure`` is the $ value of all current long positions.
         ``buying_power`` is Alpaca's actual available buying power — the order is
-        also capped by it (with a small buffer) so we never submit an order the
-        broker will reject for insufficient funds.
+        also capped by it (with a small buffer) so the engine never submits an order
+        the broker will reject for insufficient funds.
         """
         if price <= 0:
             return SizingDecision(False, 0, "invalid price")
 
-        # Target notional = min(% cap, $ cap), minus what we already hold.
+        # Target notional = min(% cap, $ cap), minus the current holding.
         pct_cap = self.cfg.max_position_pct * equity
         target_notional = min(pct_cap, self.cfg.max_position_usd)
         room_in_name = max(0.0, target_notional - current_position_value)

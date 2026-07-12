@@ -46,6 +46,7 @@ class PaperBroker:
             "buying_power": float(a.buying_power),
             "portfolio_value": float(a.portfolio_value),
             "long_market_value": float(getattr(a, "long_market_value", 0) or 0),
+            "last_equity": float(getattr(a, "last_equity", 0) or 0),
         }
 
     def clock(self) -> dict:
@@ -109,6 +110,18 @@ class PaperBroker:
                 "filled_avg_price": float(o.filled_avg_price) if o.filled_avg_price else None,
             })
         return rows
+
+    def open_order_symbols(self) -> set[str]:
+        """Symbols that currently have an open (unfilled) order.
+
+        The engine skips new orders for these so a closed-market cycle can't
+        re-submit the same buy every poll while fills are pending.
+        """
+        try:
+            req = GetOrdersRequest(status=QueryOrderStatus.OPEN, limit=100)
+            return {o.symbol for o in self.client.get_orders(req)}
+        except Exception:  # noqa: BLE001
+            return set()
 
     def cancel_all(self) -> None:
         try:

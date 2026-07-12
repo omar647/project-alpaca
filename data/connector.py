@@ -280,7 +280,7 @@ class AlpacaConnector:
     def start_stream(self, symbol: str, store: LiveQuoteStore) -> None:
         """Subscribe to live quotes + trades for ``symbol`` on a daemon thread.
 
-        Any existing stream is stopped first so we only ever stream one symbol.
+        Any existing stream is stopped first so only one symbol streams at a time.
         """
         symbol = symbol.upper().strip()
         self.stop_stream()

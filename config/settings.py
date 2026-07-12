@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Alpaca paper-trading REST endpoint. We NEVER point at the live endpoint.
+# Alpaca paper-trading REST endpoint. This project NEVER points at the live endpoint.
 PAPER_BASE_URL = "https://paper-api.alpaca.markets"
 
 

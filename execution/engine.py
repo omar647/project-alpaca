@@ -116,12 +116,14 @@ class TradingEngine:
         gross = sum(p["market_value"] for p in positions.values())
 
         buying_power = account.get("buying_power", account.get("cash", 0.0))
+        pending = self.broker.open_order_symbols()
 
         sym_states: dict[str, SymbolState] = {}
         for symbol in self.config.universe:
-            state = self._evaluate_symbol(symbol, account, positions, equity, gross, buying_power)
+            state = self._evaluate_symbol(symbol, account, positions, equity, gross,
+                                          buying_power, pending)
             sym_states[symbol] = state
-            # keep gross exposure + buying power current as we add positions this cycle
+            # keep gross exposure + buying power current as positions are added this cycle
             if state.last_action.startswith("BUY"):
                 spent = state.position_qty * state.price
                 gross += spent
@@ -138,7 +140,7 @@ class TradingEngine:
             )
 
     def _evaluate_symbol(self, symbol, account, positions, equity, gross,
-                         buying_power=None) -> SymbolState:
+                         buying_power=None, pending: set[str] | None = None) -> SymbolState:
         bars = self.pipeline.daily_bars(symbol, days=self.config.engine.bars_lookback_days)
         if bars is None or bars.empty or len(bars) < 60:
             return SymbolState(symbol, reason="insufficient data", updated=_now())
@@ -159,7 +161,13 @@ class TradingEngine:
                 st.last_action = f"SELL {held_qty:g} ({reason})"
                 return st
 
-        # 2) reconcile target vs. holding.
+        # 2) an open (unfilled) order means exposure is already in flight —
+        #    don't stack another order on top while it waits to fill.
+        if pending and symbol in pending:
+            st.last_action = "PENDING (open order)"
+            return st
+
+        # 3) reconcile target vs. holding.
         if ls.signal == 1 and held_qty == 0:
             decision = self.risk.size_long(
                 symbol, ls.price, equity,

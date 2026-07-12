@@ -25,9 +25,11 @@ identically in a historical backtest and against a live Alpaca paper account.
 - **Risk layer** — position sizing and pre-trade limit checks (per-name %, per-name
   $, gross exposure / no leverage) plus stop-loss / take-profit exits.
 - **Execution engine** — reconciles targets vs. holdings into paper orders, handles
-  order states and errors, and never lets a bad order crash the loop.
-- **UI** — a dark Streamlit dashboard: start/stop, mode switch, live positions/P&L,
-  signals, orders, an event log, and an equity curve.
+  order states and errors (an open unfilled order blocks re-submits for that
+  symbol), and never lets a bad order crash the loop.
+- **UI** — a dark terminal-style Streamlit dashboard: start/stop, mode switch, a
+  live quote board (bid/ask/spread/age), signals, positions & P&L, orders, session
+  equity + drawdown, performance metrics, and a live event log.
 
 ---
 
@@ -140,7 +142,8 @@ streamlit run ui/app.py
   dashboard streams account/positions/P&L, signals, orders, and the event log.
   Press **■ Stop** to halt.
 - **Backtest** mode: choose the strategy + years and press **Run backtest** to
-  compare the strategy to Buy & Hold (equity curve + metrics + per-symbol table).
+  compare the strategy to Buy & Hold (equity + drawdown curves, metrics, and a
+  per-symbol table).
 
 ### CLI (backtests, cron, smoke tests)
 
@@ -160,14 +163,14 @@ python3 run.py paper                    # run the live loop until Ctrl-C
 **`ma_crossover` — trend following (default).**
 Go **long** when the fast SMA is above the slow SMA (default 20/50); exit to cash
 when it crosses back below. *Intuition:* momentum persists — an established uptrend
-tends to continue, so we ride it and step aside in downtrends to dodge the worst
-drawdowns.
+tends to continue, so the strategy rides it and steps aside in downtrends to dodge
+the worst drawdowns.
 
 **`ml` — model based.**
 Engineer technical features → standardize → **PCA (≥80% variance)** → **Gradient
 Boosting** classifier predicting *next-day return > 0*. Go long when `P(up) > 0.60`,
 else flat. *Intuition:* many weak technical signals, combined by a model, can tilt
-the odds of the next day slightly in our favour.
+the odds of the next day slightly in its favour.
 
 Both are **long-only** and emit a `{0, 1}` target per symbol, so backtest and live
 share one signal path.
@@ -221,8 +224,9 @@ dashboard and in the app's **Recent orders** + **Event log**.
 ![Paper trading dashboard](screenshots/dashboard_paper.png)
 ![Backtest view](screenshots/dashboard_backtest.png)
 
-*(Add `screenshots/alpaca_dashboard.png` — your Alpaca paper account with an executed order.)*
+## Video
 
+[![Watch the demo](https://img.youtube.com/vi/-NZ54breupE/hqdefault.jpg)](https://youtu.be/-NZ54breupE)
 ---
 
 ## 7. Configuration
@@ -248,7 +252,7 @@ here** — API keys are read from `.env` via `config/settings.py`. The committed
 ## 9. Testing
 
 ```bash
-python3 -m pytest tests/ -q       # 16 unit tests, no network required
+python3 -m pytest tests/ -q       # 18 unit tests, no network required
 ```
 
 Covers indicators, signal generation (trend up/down), risk sizing + stop/take-profit,
@@ -265,8 +269,9 @@ and the backtest engine.
   60s) but decisions are daily-bar based; intraday signals would need bar streaming.
 - **Sizing** is simple (equal-ish, capped); no volatility targeting or portfolio
   optimization.
-- **No partial-fill reconciliation loop** beyond status readout; market orders in
-  paper generally fill fully.
+- **Partial fills** are displayed (filled qty / avg price) but not actively
+  re-worked; an open unfilled order blocks new orders for that symbol until it
+  resolves, and market orders in paper generally fill fully.
 - **Improvements:** transaction-cost modeling, more strategies + an ensemble,
   richer position sizing (Kelly / vol-target), alerting, and persistent state.
 
