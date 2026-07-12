@@ -52,8 +52,29 @@ st.markdown("""
   .off { background:rgba(255,93,108,.15); color:#ff5d6c; }
   .tag { font-size:.68rem; padding:2px 7px; border-radius:6px;
          background:rgba(0,229,160,.12); color:#00e5a0; }
+  /* Hide Streamlit's default "Deploy" button (keep the ⋮ menu). */
+  [data-testid="stAppDeployButton"] { display:none !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# Best-effort: also hide the "Record a screencast" item from the ⋮ menu.
+# (CSS can't target it by text, so a tiny observer in a 0-height iframe does it.)
+import streamlit.components.v1 as _components
+_components.html("""
+<script>
+const doc = window.parent.document;
+function hideScreencast() {
+  doc.querySelectorAll('ul[role="menu"] li, [role="menuitem"], span').forEach(el => {
+    if (/record a screencast/i.test(el.textContent) && el.children.length === 0) {
+      const item = el.closest('li') || el.closest('[role="menuitem"]') || el;
+      item.style.display = 'none';
+    }
+  });
+}
+new MutationObserver(hideScreencast).observe(doc.body, {childList:true, subtree:true});
+hideScreencast();
+</script>
+""", height=0)
 
 
 # --------------------------------------------------------------------------- #
@@ -138,35 +159,52 @@ if mode == "Paper trading":
     engine = get_engine(strat_name, params)
     running = engine.running
 
-    c1, c2, c3 = st.columns([1, 1, 3])
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 3])
     if c1.button("▶ Start", disabled=running, use_container_width=True):
         engine.start(); st.rerun()
     if c2.button("■ Stop", disabled=not running, use_container_width=True):
         engine.stop(); st.rerun()
+    if c3.button("🔄 Refresh", use_container_width=True):
+        st.rerun()
     status = ("<span class='pill on'>● RUNNING</span>" if running
               else "<span class='pill off'>● STOPPED</span>")
-    c3.markdown(f"### project-alpaca &nbsp; {status} "
+    c4.markdown(f"### project-alpaca &nbsp; {status} "
                 f"&nbsp;<span class='tag'>PAPER</span> "
                 f"<span class='tag'>{strat_name}</span>", unsafe_allow_html=True)
 
-    auto = st.sidebar.checkbox("Auto-refresh (5s)", value=running)
+    auto = st.sidebar.checkbox("Auto-refresh (5s)", value=True)
 
     state = engine.state()
-    acct = state.account or {}
+    # Read account + positions LIVE from the broker so the dashboard is current
+    # even between cycles and even when the market is closed.
+    try:
+        acct = engine.broker.account()
+        live_positions = engine.broker.positions()
+    except Exception as exc:  # noqa: BLE001
+        acct, live_positions = state.account or {}, state.positions
+        st.warning(f"Could not read account: {exc}")
+
     equity = acct.get("equity")
     start_eq = cfg.engine.starting_equity
     pnl = (equity - start_eq) if equity else None
 
     k1, k2, k3, k4, k5 = st.columns(5)
     kpi(k1, "Equity", money(equity))
-    kpi(k2, "Cash", money(acct.get("cash")))
+    kpi(k2, "Buying power", money(acct.get("buying_power")))
     kpi(k3, "P&L vs start", money(pnl), "pos" if (pnl or 0) >= 0 else "neg")
-    kpi(k4, "Open positions", str(len(state.positions)))
+    kpi(k4, "Open positions", str(len(live_positions)))
     kpi(k5, "Cycles", str(state.cycles))
 
     if not running and state.cycles == 0:
         st.info("Engine is stopped. Press **▶ Start** to begin the live paper "
                 "data feed + trading loop. (Connects to your Alpaca paper account.)")
+    elif running and state.cycles == 0:
+        st.info("Engine started — first evaluation cycle runs in a few seconds "
+                "(fetching bars for the whole universe)…")
+    if acct.get("buying_power") is not None and acct["buying_power"] < 1000:
+        st.warning("⚠️ Low buying power on this paper account — new buy orders may "
+                   "be rejected. Reset the paper account in the Alpaca dashboard "
+                   "(Account → Reset) to restore $100k of buying power.")
 
     # Signals table
     st.markdown("#### Live signals")
@@ -186,13 +224,13 @@ if mode == "Paper trading":
     # Positions
     with colL:
         st.markdown("#### Positions & P&L")
-        if state.positions:
+        if live_positions:
             prows = [{
                 "Symbol": sym, "Qty": p["qty"], "Avg entry": f"${p['avg_entry_price']:.2f}",
                 "Price": f"${p['current_price']:.2f}", "Mkt value": money(p["market_value"]),
                 "Unreal. P&L": f"${p['unrealized_pl']:+,.0f}",
                 "Ret": pct(p["unrealized_plpc"]),
-            } for sym, p in state.positions.items()]
+            } for sym, p in live_positions.items()]
             st.dataframe(pd.DataFrame(prows), use_container_width=True, hide_index=True)
         else:
             st.caption("No open positions.")

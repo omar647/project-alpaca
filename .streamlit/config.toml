@@ -9,7 +9,5 @@ font = "sans serif"
 [server]
 headless = true
 
-[client]
-# Keep the hamburger (⋮) menu, but drop the "Deploy" button and the
-# developer/backend options (Deploy this app, Clear cache, etc.).
-toolbarMode = "viewer"
+# Full hamburger (⋮) menu is kept (theme switcher, Settings, Rerun, Print, About).
+# The "Deploy" button is hidden via CSS in ui/app.py instead of reducing the menu.

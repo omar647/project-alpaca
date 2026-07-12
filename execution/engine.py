@@ -115,13 +115,17 @@ class TradingEngine:
         equity = account.get("equity", self.config.engine.starting_equity)
         gross = sum(p["market_value"] for p in positions.values())
 
+        buying_power = account.get("buying_power", account.get("cash", 0.0))
+
         sym_states: dict[str, SymbolState] = {}
         for symbol in self.config.universe:
-            state = self._evaluate_symbol(symbol, account, positions, equity, gross)
+            state = self._evaluate_symbol(symbol, account, positions, equity, gross, buying_power)
             sym_states[symbol] = state
-            # keep gross exposure current as we add positions this cycle
+            # keep gross exposure + buying power current as we add positions this cycle
             if state.last_action.startswith("BUY"):
-                gross += state.position_qty * state.price
+                spent = state.position_qty * state.price
+                gross += spent
+                buying_power = max(0.0, buying_power - spent)
 
         with self._lock:
             self._state.account = account
@@ -133,7 +137,8 @@ class TradingEngine:
                 (self._state.last_cycle, self.broker.account().get("equity", equity))
             )
 
-    def _evaluate_symbol(self, symbol, account, positions, equity, gross) -> SymbolState:
+    def _evaluate_symbol(self, symbol, account, positions, equity, gross,
+                         buying_power=None) -> SymbolState:
         bars = self.pipeline.daily_bars(symbol, days=self.config.engine.bars_lookback_days)
         if bars is None or bars.empty or len(bars) < 60:
             return SymbolState(symbol, reason="insufficient data", updated=_now())
@@ -159,6 +164,7 @@ class TradingEngine:
             decision = self.risk.size_long(
                 symbol, ls.price, equity,
                 current_position_value=0.0, gross_exposure=gross,
+                buying_power=buying_power,
             )
             if not decision.approved:
                 self.log.risk(f"{symbol}: order blocked — {decision.reason}")

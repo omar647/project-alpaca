@@ -31,6 +31,19 @@ def test_size_long_blocked_at_gross_cap():
     assert not d.approved and d.qty == 0
 
 
+def test_size_long_capped_by_buying_power():
+    # % cap allows $15k, but only $2k buying power → ~19 shares (95% buffer).
+    d = _rm().size_long("X", price=100, equity=100_000, current_position_value=0,
+                        gross_exposure=0, buying_power=2_000)
+    assert d.approved and d.qty == 19  # int(2000*0.95 / 100)
+
+
+def test_size_long_blocked_when_no_buying_power():
+    d = _rm().size_long("X", price=100, equity=100_000, current_position_value=0,
+                        gross_exposure=0, buying_power=50)
+    assert not d.approved and d.qty == 0
+
+
 def test_stop_loss_and_take_profit():
     rm = _rm()
     assert rm.exit_reason(100, 91) and "stop" in rm.exit_reason(100, 91)

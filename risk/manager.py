@@ -36,10 +36,14 @@ class RiskManager:
         equity: float,
         current_position_value: float,
         gross_exposure: float,
+        buying_power: float | None = None,
     ) -> SizingDecision:
         """Decide how many shares to BUY for a fresh long, within all limits.
 
         ``gross_exposure`` is the $ value of all current long positions.
+        ``buying_power`` is Alpaca's actual available buying power — the order is
+        also capped by it (with a small buffer) so we never submit an order the
+        broker will reject for insufficient funds.
         """
         if price <= 0:
             return SizingDecision(False, 0, "invalid price")
@@ -54,11 +58,17 @@ class RiskManager:
         room_gross = max(0.0, gross_cap - gross_exposure)
 
         budget = min(room_in_name, room_gross)
+
+        # Never exceed real buying power (leave a 5% buffer for price slippage).
+        if buying_power is not None:
+            budget = min(budget, buying_power * 0.95)
+
         qty = int(budget // price)
         if qty < 1:
+            bp_txt = f", buying power ${buying_power:,.0f}" if buying_power is not None else ""
             return SizingDecision(False, 0,
                                   f"no room (per-name ${room_in_name:,.0f}, "
-                                  f"gross ${room_gross:,.0f})")
+                                  f"gross ${room_gross:,.0f}{bp_txt})")
         return SizingDecision(True, qty,
                               f"buy {qty} @ ${price:.2f} (${qty * price:,.0f})")
 
