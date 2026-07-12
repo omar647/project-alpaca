@@ -48,6 +48,15 @@ class PaperBroker:
             "long_market_value": float(getattr(a, "long_market_value", 0) or 0),
         }
 
+    def clock(self) -> dict:
+        """Market clock: is it open, and when does it next open/close."""
+        try:
+            c = self.client.get_clock()
+            return {"is_open": bool(c.is_open),
+                    "next_open": c.next_open, "next_close": c.next_close}
+        except Exception:  # noqa: BLE001
+            return {"is_open": None, "next_open": None, "next_close": None}
+
     def positions(self) -> dict[str, dict]:
         """Map symbol → {qty, avg_entry_price, market_value, unrealized_pl, ...}."""
         out: dict[str, dict] = {}

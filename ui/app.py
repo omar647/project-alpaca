@@ -95,6 +95,8 @@ p, .stMarkdown, label, .stCaption {{ color:var(--ink2); }}
 .chip {{ font-family:var(--mono); font-size:.68rem; letter-spacing:.03em; padding:3px 8px;
   border-radius:6px; background:var(--panel2); color:var(--ink2); border:1px solid var(--line); }}
 .chip.mode {{ color:var(--mint); border-color:rgba(0,230,162,.25); background:rgba(0,230,162,.07); }}
+.chip.mkt-open {{ color:var(--up); border-color:rgba(43,208,124,.28); background:rgba(43,208,124,.1); }}
+.chip.mkt-shut {{ color:var(--amber); border-color:rgba(255,180,84,.25); background:rgba(255,180,84,.08); }}
 .status {{ display:inline-flex; align-items:center; gap:7px; font-size:.76rem; font-weight:600;
   padding:5px 12px; border-radius:999px; }}
 .status.on {{ color:var(--up); background:rgba(43,208,124,.13); border:1px solid rgba(43,208,124,.28); }}
@@ -381,14 +383,22 @@ st.sidebar.markdown(
     unsafe_allow_html=True)
 
 
-def topbar(running: bool, mode_label: str, strat: str):
+def topbar(running: bool, mode_label: str, strat: str, market: dict | None = None):
     status = (f"<span class='status on'><span class='dot'></span>RUNNING</span>" if running
               else "<span class='status off'><span class='dot'></span>STOPPED</span>")
+    mkt = ""
+    if market and market.get("is_open") is not None:
+        if market["is_open"]:
+            mkt = "<span class='chip mkt-open'>● MARKET OPEN</span>"
+        else:
+            nxt = market.get("next_open")
+            when = nxt.astimezone().strftime("%a %H:%M") if nxt is not None else ""
+            mkt = f"<span class='chip mkt-shut'>● MARKET CLOSED · opens {when}</span>"
     st.markdown(
         "<div class='topbar'><div class='brand'><span class='mark'>▲</span>"
         "<div><div class='name'>project-alpaca</div>"
         f"<div class='sub'>Alpaca paper trading engine</div></div></div>"
-        f"<div class='spacer'></div><span class='chip mode'>{escape(mode_label)}</span>"
+        f"<div class='spacer'></div>{mkt}<span class='chip mode'>{escape(mode_label)}</span>"
         f"<span class='chip'>{escape(strat)}</span>{status}</div>",
         unsafe_allow_html=True)
 
@@ -400,7 +410,11 @@ if mode == "Paper trading":
     engine = get_engine(strat_name, params)
     running = engine.running
 
-    topbar(running, "PAPER", strat_name)
+    try:
+        market = engine.broker.clock()
+    except Exception:  # noqa: BLE001
+        market = None
+    topbar(running, "PAPER", strat_name, market)
 
     c1, c2, c3, _ = st.columns([1, 1, 1, 4])
     if c1.button("▶  Start", disabled=running, use_container_width=True, type="primary"):
@@ -439,6 +453,12 @@ if mode == "Paper trading":
     elif running and state.cycles == 0:
         st.info("Engine started — first evaluation cycle runs in a few seconds "
                 "(fetching bars for the whole universe)…")
+    if market and market.get("is_open") is False:
+        nxt = market.get("next_open")
+        when = nxt.astimezone().strftime("%A %H:%M %Z") if nxt is not None else "the next session"
+        st.info(f"📕 Market is closed. Orders still submit and show as **ACCEPTED**, "
+                f"but they fill (and become positions with live P&L) at the next open "
+                f"— **{when}**. Prices are last-close until then.")
     if acct.get("buying_power") is not None and acct["buying_power"] < 1000:
         st.warning("Low buying power on this paper account — new buy orders may be "
                    "rejected. Reset the paper account in the Alpaca dashboard "
