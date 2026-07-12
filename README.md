@@ -226,7 +226,8 @@ dashboard and in the app's **Recent orders** + **Event log**.
 
 ## Video
 
-[![Watch the demo](https://img.youtube.com/vi/-NZ54breupE/hqdefault.jpg)](https://youtu.be/-NZ54breupE)
+[![Terminal Demo](https://img.youtube.com/vi/pb6i9c8oyRU/hqdefault.jpg)](https://youtu.be/pb6i9c8oyRU)
+[![Dashboard Demo](https://img.youtube.com/vi/9ny7q1VIloc/hqdefault.jpg)](https://youtu.be/9ny7q1VIloc)
 ---
 
 ## 7. Configuration
