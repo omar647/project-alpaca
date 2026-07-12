@@ -8,3 +8,7 @@ font = "sans serif"
 
 [server]
 headless = true
+
+[client]
+# Hide the default "Deploy" button + hamburger menu (cleaner for the demo).
+toolbarMode = "minimal"
